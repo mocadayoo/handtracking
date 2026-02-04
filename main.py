@@ -47,6 +47,37 @@ def normalize(v):
     L = np.linalg.norm(v, axis=-1, keepdims=True)
     return np.where(L > 0, v / L, v)
 
+def get_finger_up(hand_landmarks):
+    p = {i: np.array([hand_landmarks[i].x, hand_landmarks[i].y, hand_landmarks[i].z]) for i in range(21)}
+
+    # 基準となるベクトル
+    hand_vec = p[9] - p[0] # 手首から中指付け根へのベクトル 親指以外の指の判定用
+    palm_vec = p[5] - p[17] # 小指の付け根から人差し指の付け根へのベクトル 親指の判定用
+
+    # それぞれの指の (指先, 第二関節)
+    fingers = {
+        "index": (8,6),
+        "middle": (12,10),
+        "ring": (16,14),
+        "little": (20,18)
+    }
+
+    fingers_json = {}
+
+    # 名前と中の使用する関節の番号を取り出して計算
+    for name, (tip, mcp) in fingers.items():
+        finger_vec = p[tip] - p[mcp] # 指の向き (ベクトル) を計算
+        fingers_json[name] = bool(np.dot(normalize(finger_vec), normalize(hand_vec)) > 0) # hand_vecの方向から180度の範囲内をfinger_vecが向いているか判断
+
+    # 親指のベクトル (親指の指先 - 親指の付け根)
+    thumb_vec = p[4] - p[2]
+    fingers_json["thumb"] = bool(np.dot(normalize(thumb_vec), normalize(palm_vec)) > 0) # palm_vecの方向に対してthumb_vecが180以内に納まっているか判断
+
+    # jsonの値を全部取り出し、Trueかどうか、Trueなら1を返しそれをsumが計算する。
+    fingers_json["up_count"] = sum(1 for status in fingers_json.values() if status is True)
+    return fingers_json
+
+"""
 def finger_up_count(hand_landmarks):
     counter = 0
 
@@ -72,6 +103,7 @@ def finger_up_count(hand_landmarks):
     if np.dot(normalize(thumb_vec), normalize(palm_vec)) < 0: counter += 1
 
     return counter
+"""
 
 def draw_landmarks(img, landmarks):
     for line_point in HAND_CONNECTS:
@@ -102,8 +134,9 @@ while camera.isOpened():
 
     if last_detect_result is not None and last_detect_result.hand_landmarks: # LIVE_STREAMの場合検知の処理が非同期なためデータがあるか確認
         for idx, (hand_landmarks, _handedness) in enumerate(zip(last_detect_result.hand_landmarks, last_detect_result.handedness)):
-            cv.putText(frame_bgr, f"{finger_up_count(hand_landmarks)}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
-
+            finger_status = get_finger_up(hand_landmarks)
+            cv.putText(frame_bgr, f"{finger_status['up_count']}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
+            print(finger_status)
             # 画面の縦横幅まで検知の処理結果の座標を拡大
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
@@ -114,7 +147,7 @@ while camera.isOpened():
 
     prev_time = current_time
     cv.imshow('hand tracking test', frame_bgr)
-    ky = cv.waitKey(5)
+    ky = cv.waitKey(1)
     if ky == ord("l"):
         break
 
