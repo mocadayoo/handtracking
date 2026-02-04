@@ -47,10 +47,10 @@ def normalize(v):
     L = np.linalg.norm(v, axis=-1, keepdims=True)
     return np.where(L > 0, v / L, v)
 
-def count_up_fingers(hand_landmarks):
+def finger_up_count(hand_landmarks):
     counter = 0
 
-    p = {i: np.array([hand_landmarks[i].x, hand_landmarks[i].y]) for i in range(21)}
+    p = {i: np.array([hand_landmarks[i].x, hand_landmarks[i].y, hand_landmarks[i].z]) for i in range(21)}
 
     # 手首から中指の付け根へのベクトルを取る <- これを手の向きとする。
     hand_vec = p[9] - p[0]
@@ -102,7 +102,7 @@ while camera.isOpened():
 
     if last_detect_result is not None and last_detect_result.hand_landmarks:
         for idx, (hand_landmarks, _handedness) in enumerate(zip(last_detect_result.hand_landmarks, last_detect_result.handedness)):
-            cv.putText(frame_bgr, f"{count_up_fingers(hand_landmarks)}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
+            cv.putText(frame_bgr, f"{finger_up_count(hand_landmarks)}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
 
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
