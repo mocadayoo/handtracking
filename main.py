@@ -6,6 +6,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+# 手の点(21個)をつなぐ線を設定
 HAND_CONNECTS = [
     (0,1), (1,2), (2,3), (3,4),       # 親指
     (0,5), (5,6), (6,7), (7,8),       # 人差し指
@@ -14,6 +15,8 @@ HAND_CONNECTS = [
     (17,18), (18,19), (19,20),        # 小指
     (5,9), (9,13), (13,17), (0,17)    # 指の付け根
 ]
+# 検知の閾値
+GET_FINGER_UP_THRESHOLD = -0.1
 
 # draw settings
 HAND_CIRCLE_COLOR = (0, 255, 0)
@@ -64,14 +67,15 @@ def get_finger_up(hand_landmarks):
 
     fingers_json = {}
 
+    # 親指のベクトル (親指の指先 - 親指の付け根)
+    thumb_vec = p[4] - p[2]
+    fingers_json["thumb"] = bool(np.dot(normalize(thumb_vec), normalize(palm_vec)) > GET_FINGER_UP_THRESHOLD) # palm_vecの方向に対してthumb_vecが180以内に納まっているか判断
+
+
     # 名前と中の使用する関節の番号を取り出して計算
     for name, (tip, mcp) in fingers.items():
         finger_vec = p[tip] - p[mcp] # 指の向き (ベクトル) を計算
-        fingers_json[name] = bool(np.dot(normalize(finger_vec), normalize(hand_vec)) > 0) # hand_vecの方向から180度の範囲内をfinger_vecが向いているか判断
-
-    # 親指のベクトル (親指の指先 - 親指の付け根)
-    thumb_vec = p[4] - p[2]
-    fingers_json["thumb"] = bool(np.dot(normalize(thumb_vec), normalize(palm_vec)) > 0) # palm_vecの方向に対してthumb_vecが180以内に納まっているか判断
+        fingers_json[name] = bool(np.dot(normalize(finger_vec), normalize(hand_vec)) > GET_FINGER_UP_THRESHOLD) # hand_vecの方向から180度の範囲内をfinger_vecが向いているか判断
 
     # jsonの値を全部取り出し、Trueかどうか、Trueなら1を返しそれをsumが計算する。
     fingers_json["up_count"] = sum(1 for status in fingers_json.values() if status is True)
