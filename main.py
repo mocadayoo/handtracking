@@ -42,7 +42,7 @@ detector = vision.HandLandmarker.create_from_options(options)
 def mp_convert_to_camera_wh(point, w, h):
     return (int(point.x * w), int(point.y * h))
 
-# normalize関数
+# 正規化する関数
 def normalize(v):
     L = np.linalg.norm(v, axis=-1, keepdims=True)
     return np.where(L > 0, v / L, v)
@@ -66,7 +66,7 @@ def finger_up_count(hand_landmarks):
 
     # 人差し指の付け根から小指の付け根へのベクトル 親指がその向きと同じ方向にしまわれるはず。
     palm_vec = p[17] - p[5]
-    # 親指の第二関節から指先までのベクトル palm_vecと比較
+    # 親指の一個目の関節から指先までのベクトル palm_vecと比較
     thumb_vec = p[4] - p[2]
 
     if np.dot(normalize(thumb_vec), normalize(palm_vec)) < 0: counter += 1
@@ -100,19 +100,21 @@ while camera.isOpened():
     timestamp_ms = int(current_time * 1000)
     detector.detect_async(mp_image, timestamp_ms)
 
-    if last_detect_result is not None and last_detect_result.hand_landmarks:
+    if last_detect_result is not None and last_detect_result.hand_landmarks: # LIVE_STREAMの場合検知の処理が非同期なためデータがあるか確認
         for idx, (hand_landmarks, _handedness) in enumerate(zip(last_detect_result.hand_landmarks, last_detect_result.handedness)):
             cv.putText(frame_bgr, f"{finger_up_count(hand_landmarks)}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
 
+            # 画面の縦横幅まで検知の処理結果の座標を拡大
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
 
+    # fps表示の計算 時間を使用
     fps = 1 / (current_time - prev_time)
     cv.putText(frame_bgr, f"FPS: {int(fps)}", (20, 50), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
 
     prev_time = current_time
     cv.imshow('hand tracking test', frame_bgr)
-    ky = cv.waitKey(1)
+    ky = cv.waitKey(5)
     if ky == ord("l"):
         break
 
