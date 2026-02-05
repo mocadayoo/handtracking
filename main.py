@@ -17,6 +17,8 @@ HAND_CONNECTS = [
 ]
 # 検知の閾値
 GET_FINGER_UP_THRESHOLD = -0.1
+# 検出に渡すカメラの画質を調整
+SCALE_DOWN = 0.3
 
 # draw settings
 HAND_CIRCLE_COLOR = (0, 255, 0)
@@ -81,34 +83,6 @@ def get_finger_up(hand_landmarks):
     fingers_json["up_count"] = sum(1 for status in fingers_json.values() if status is True)
     return fingers_json
 
-"""
-def finger_up_count(hand_landmarks):
-    counter = 0
-
-    p = {i: np.array([hand_landmarks[i].x, hand_landmarks[i].y, hand_landmarks[i].z]) for i in range(21)}
-
-    # 手首から中指の付け根へのベクトルを取る <- これを手の向きとする。
-    hand_vec = p[9] - p[0]
-
-    # 親指を除く　人差し指から小指までの 指先と2個目の関節 <- これのベクトルを手のベクトルと計算し、指がたっているかカウントする
-    tips = [8,12,16,20]
-    mcp_bases = [6,10,14,18]
-
-    for tip_idx, base_idx in zip(tips, mcp_bases):
-        finger_vec = p[tip_idx] - p[base_idx]
-
-        if np.dot(normalize(finger_vec), normalize(hand_vec)) > 0: counter += 1
-
-    # 人差し指の付け根から小指の付け根へのベクトル 親指がその向きと同じ方向にしまわれるはず。
-    palm_vec = p[17] - p[5]
-    # 親指の一個目の関節から指先までのベクトル palm_vecと比較
-    thumb_vec = p[4] - p[2]
-
-    if np.dot(normalize(thumb_vec), normalize(palm_vec)) < 0: counter += 1
-
-    return counter
-"""
-
 def draw_landmarks(img, landmarks):
     for line_point in HAND_CONNECTS:
         cv.line(img, landmarks[line_point[0]], landmarks[line_point[1]], HAND_LINE_COLOR, HAND_LINE_TICKNESS)
@@ -119,7 +93,6 @@ camera = cv.VideoCapture(0)
 ret, first_frame = camera.read()
 H, W, _ = first_frame.shape
 
-SCALE_DOWN = 0.3
 resize = (int(W * SCALE_DOWN), int(H * SCALE_DOWN))
 prev_time = 0
 
