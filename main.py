@@ -20,6 +20,8 @@ GET_FINGER_UP_THRESHOLD = -0.1
 # 検出に渡すカメラの画質を調整
 SCALE_DOWN = 0.3
 
+MAX_FPS = 60
+
 # draw settings
 HAND_CIRCLE_COLOR = (0, 255, 0)
 HAND_CIRCLE_RADIUS = 5
@@ -93,10 +95,12 @@ camera = cv.VideoCapture(0)
 ret, first_frame = camera.read()
 H, W, _ = first_frame.shape
 
+target_frame_time = 1 / MAX_FPS
 resize = (int(W * SCALE_DOWN), int(H * SCALE_DOWN))
 prev_time = 0
 
 while camera.isOpened():
+    current_time = time.perf_counter()
     ret, frame_bgr = camera.read()
     if not ret: break
 
@@ -105,7 +109,6 @@ while camera.isOpened():
     rgb_mp_frame = cv.cvtColor(for_mp_frame, cv.COLOR_BGR2RGB) # mediapipeのRBBに合わせる
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_mp_frame)
 
-    current_time = time.time()
     timestamp_ms = int(current_time * 1000)
     detector.detect_async(mp_image, timestamp_ms)
 
@@ -118,13 +121,18 @@ while camera.isOpened():
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
 
+    elasped_time = current_time - prev_time
     # fps表示の計算 時間を使用
-    fps = 1 / (current_time - prev_time)
+    fps = 1 / elasped_time
     cv.putText(frame_bgr, f"FPS: {int(fps)}", (20, 50), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
 
     prev_time = current_time
     cv.imshow('hand tracking test', frame_bgr)
-    ky = cv.waitKey(1)
+
+    # (ms) fps制限 この計算の時間から処理がスタートしたときの時間を引くことでこのframeにかかった時間を算出
+    #      算出した時間を1frameにかけてほしい時間から引き、その時間が1msとどっちがでかいか計算
+    wait_time = max(1, int((target_frame_time - (time.perf_counter() - current_time)) * 1000))
+    ky = cv.waitKey(wait_time)
     if ky == ord("l"):
         break
 
