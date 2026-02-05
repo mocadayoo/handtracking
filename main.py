@@ -18,6 +18,7 @@ HAND_CONNECTS = [
 ]
 # 検知の閾値
 GET_FINGER_UP_THRESHOLD = -0.1
+GET_FINGER_UP_THUMB_THRESHOLD = -0.3
 # 検出に渡すカメラの画質を調整
 SCALE_DOWN = 0.3
 
@@ -74,15 +75,15 @@ def get_finger_up(hand_landmarks):
 
     fingers_json = {}
 
-    # 親指のベクトル (親指の指先 - 親指の付け根)
-    thumb_vec = p[4] - p[2]
+    # 親指のベクトル (親指の指先 - 親指の第一関節)
+    thumb_vec = p[4] - p[3]
     fingers_json["thumb"] = bool(np.dot(normalize(thumb_vec), normalize(palm_vec)) > GET_FINGER_UP_THRESHOLD) # palm_vecの方向に対してthumb_vecが180以内に納まっているか判断
 
 
     # 名前と中の使用する関節の番号を取り出して計算
     for name, (tip, mcp) in fingers.items():
         finger_vec = p[tip] - p[mcp] # 指の向き (ベクトル) を計算
-        fingers_json[name] = bool(np.dot(normalize(finger_vec), normalize(hand_vec)) > GET_FINGER_UP_THRESHOLD) # hand_vecの方向から180度の範囲内をfinger_vecが向いているか判断
+        fingers_json[name] = bool(np.dot(normalize(finger_vec), normalize(hand_vec)) > GET_FINGER_UP_THUMB_THRESHOLD) # hand_vecの方向から180度の範囲内をfinger_vecが向いているか判断
 
     # jsonの値を全部取り出し、Trueかどうか、Trueなら1を返しそれをsumが計算する。
     fingers_json["up_count"] = sum(1 for status in fingers_json.values() if status is True)
