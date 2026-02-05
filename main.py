@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import time
+from collections import deque
 
 import mediapipe as mp
 from mediapipe.tasks import python
@@ -20,7 +21,9 @@ GET_FINGER_UP_THRESHOLD = -0.1
 # 検出に渡すカメラの画質を調整
 SCALE_DOWN = 0.3
 
-MAX_FPS = 60
+MAX_FPS = 30
+# 誤差があるため少しだけ増やす
+MAX_FPS += 5
 
 # draw settings
 HAND_CIRCLE_COLOR = (0, 255, 0)
@@ -95,6 +98,7 @@ camera = cv.VideoCapture(0)
 ret, first_frame = camera.read()
 H, W, _ = first_frame.shape
 
+past_frame_time = deque(maxlen=30)
 target_frame_time = 1 / MAX_FPS
 resize = (int(W * SCALE_DOWN), int(H * SCALE_DOWN))
 prev_time = 0
@@ -121,10 +125,11 @@ while camera.isOpened():
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
 
-    elasped_time = current_time - prev_time
+    past_frame_time.append(current_time - prev_time)
+    avg_frame_time = sum(past_frame_time) / len(past_frame_time)
     # fps表示の計算 時間を使用
-    fps = 1 / elasped_time
-    cv.putText(frame_bgr, f"FPS: {int(fps)}", (20, 50), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
+    avg_fps = 1 / avg_frame_time
+    cv.putText(frame_bgr, f"FPS: {int(avg_fps)}", (20, 50), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
 
     prev_time = current_time
     cv.imshow('hand tracking test', frame_bgr)
