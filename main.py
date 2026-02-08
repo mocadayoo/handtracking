@@ -7,6 +7,8 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+from Utils.finger_pose import get_pose
+
 # 手の点(21個)をつなぐ線を設定
 HAND_CONNECTS = [
     (0,1), (1,2), (2,3), (3,4),       # 親指
@@ -122,6 +124,7 @@ while camera.isOpened():
             finger_status = get_finger_up(hand_landmarks)
             cv.putText(frame_bgr, f"{finger_status['up_count']}", ((idx * 30) + 150, 100), cv.FONT_HERSHEY_DUPLEX, 1, (255,255,255), 2)
             print(finger_status)
+            print(get_pose(finger_status))
             # 画面の縦横幅まで検知の処理結果の座標を拡大
             scaleup_landmarks =  [(int(lm.x * W), int(lm.y * H)) for lm in hand_landmarks]
             draw_landmarks(frame_bgr, scaleup_landmarks)
